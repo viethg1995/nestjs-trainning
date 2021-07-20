@@ -1,68 +1,79 @@
-import { HttpException, Injectable } from '@nestjs/common';
-import { COURSES } from './courses.mock';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateCourseDto } from './Dto/create-course.dto';
+import { Course } from './Entity/course.entity';
 
 @Injectable()
 export class CoursesService {
 
-    courses = COURSES;
+    constructor(
+        @InjectRepository(Course)
+        private courseRepository: Repository<Course>
+    ) {}
 
     // lay toan to khoa hoc
-    getCourses(): Promise<any> {
-        return new Promise(resolve => {
-             resolve(this.courses);
-        });
+    getCourses(): Promise<Course[]> {
+        return this.courseRepository.find();
     }
 
     // lay khoa hoc theo id
-    getCourse(courseId): Promise<any> {
+    getCourse(courseId): Promise<Course> {
         let id = Number(courseId);
-        return new Promise(resolve => {
-            const course = this.courses.find(course => course.id === id);
-            if (!course) {
-                throw new HttpException('Course does not exist', 404)
-            }
-            resolve(course);
-        });
+        return this.courseRepository.findOne(id);
     }
 
     // them khoa hoc
-    addCourse(course): Promise<any> {
+    addCourse(course: CreateCourseDto): Promise<any> {
+        let courseAdd: Course = new Course();
+        courseAdd.title = course.title;
+        courseAdd.description = course.description;
+        courseAdd.author = course.author;
+        courseAdd.url = course.url;
+
+        let result = this.courseRepository.save(courseAdd);
+        if (result) {
+            return new Promise(resolve => {
+                resolve({status: '200', message: 'Khóa học được thêm thành công'});
+            });
+        }
         return new Promise(resolve => {
-            this.courses.push(course);
-            resolve({status: '200', message: 'Khóa học được thêm thành công'});
+            resolve({status: '400', message: 'Khóa học được thêm không thành công'});
         });
     }
 
     // cap nhat khoa hoc
-    updateCourse(coursesId: string | number ,course: CreateCourseDto) {
-        let id = Number(coursesId);
+    async updateCourse(coursesId: string | number ,course: CreateCourseDto) {
+        let courseUpdate: Course = await this.courseRepository.findOne(coursesId);
+        courseUpdate.title = course.title;
+        courseUpdate.description = course.description;
+        courseUpdate.author = course.author;
+        courseUpdate.url = course.url;
 
+        let result = this.courseRepository.save(courseUpdate);
+
+        if (result) {
+            return new Promise(resolve => {
+                resolve({status: '200', message: 'Khóa học được sửa thành công'});
+            });
+        }
         return new Promise(resolve => {
-            const courseUpdate = this.courses.find(course => course.id === id);
-            if (!courseUpdate) {
-                throw new HttpException('Course does not exist', 404)
-            }
-
-            courseUpdate.title = course.title;
-            courseUpdate.author = course.author;
-            courseUpdate.description = course.description;
-            courseUpdate.url = course.url;
-
-            resolve({status: '200', message: 'Khóa học được cập nhật thành công'});
+            resolve({status: '400', message: 'Khóa học được sửa không thành công'});
         });
     }
 
     // xoa khoa hoc
     deleteCourse(courseId): Promise<any> {
         let id = Number(courseId);
+
+        let result = this.courseRepository.delete(id);
+        if (result) {
+            return new Promise(resolve => {
+                resolve({status: '200', message: 'Khóa học được xóa thành công'});
+            });
+        }
         return new Promise(resolve => {
-            let index = this.courses.findIndex(course => course.id === id);
-            if (index === -1) {
-                throw new HttpException('Course does not exist', 404);
-            }
-            this.courses.splice(index, 1);
-            resolve({status: '200', message: 'Khóa học được xóa thành công'});
+            resolve({status: '400', message: 'Khóa học được xóa không thành công'});
         });
     }
 }
